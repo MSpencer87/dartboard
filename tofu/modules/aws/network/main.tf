@@ -58,7 +58,7 @@ resource "aws_subnet" "public" {
   count                   = local.create_vpc ? 1 : 0
   availability_zone       = var.availability_zone
   vpc_id                  = local.vpc_id
-  cidr_block              = "172.16.0.0/24"
+  cidr_block              = "172.16.0.0/20"
   map_public_ip_on_launch = true
 
   tags = {
@@ -71,7 +71,7 @@ resource "aws_subnet" "private" {
   count                   = local.create_vpc ? 1 : 0
   availability_zone       = var.availability_zone
   vpc_id                  = local.vpc_id
-  cidr_block              = "172.16.1.0/24"
+  cidr_block              = "172.16.96.0/20"
   map_public_ip_on_launch = false
 
   tags = {
@@ -84,7 +84,7 @@ resource "aws_subnet" "secondary_private" {
   count                   = local.create_vpc && var.secondary_availability_zone != null ? 1 : 0
   availability_zone       = var.secondary_availability_zone
   vpc_id                  = local.vpc_id
-  cidr_block              = "172.16.2.0/24"
+  cidr_block              = "172.16.192.0/20"
   map_public_ip_on_launch = false
 
   tags = {
@@ -104,6 +104,7 @@ resource "aws_key_pair" "key_pair" {
 }
 
 resource "aws_main_route_table_association" "vpc_internet" {
+  count          = local.create_vpc ? 1 : 0
   vpc_id         = local.vpc_id
   route_table_id = aws_route_table.public.id
 }
@@ -256,14 +257,14 @@ module "bastion" {
     host_configuration_commands : []
   }
   network_config = {
-    availability_zone : var.availability_zone,
+    availability_zone : var.availability_zone
     public_subnet_id : local.public_subnet_id
     private_subnet_id : local.private_subnet_id
     secondary_private_subnet_id : local.secondary_private_subnet_id
     public_security_group_id : aws_security_group.public.id
     private_security_group_id : aws_security_group.private.id
     ssh_key_name : aws_key_pair.key_pair.key_name
-    ssh_bastion_host : null,
-    ssh_bastion_user : null,
+    ssh_bastion_host : null
+    ssh_bastion_user : null
   }
 }
