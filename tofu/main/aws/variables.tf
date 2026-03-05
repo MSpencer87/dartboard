@@ -101,12 +101,15 @@ variable "existing_vpc_name" {
 
 variable "bastion_host_ami" {
   description = "AMI ID"
-  default     = "ami-0e55a8b472a265e3f"
+  default     = "ami-09eca94db2d87d45a"
   // openSUSE-Leap-15-5-v20230608-hvm-ssd-arm64-a516e959-df54-4035-bb1a-63599b7a6df9
 }
 
 variable "bastion_host_instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t4g.large"
+  default     = "t3a.large"
 }
+
+variable "aws_access_key" {}
+variable "aws_secret_key" {}
