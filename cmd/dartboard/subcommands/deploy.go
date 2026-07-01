@@ -351,19 +351,19 @@ func chartInstallRancher(r *dart.Dart, rancherImageTag string, cluster *tofu.Clu
 	if r.ChartVariables.RancherChartRepoOverride != "" {
 		rancherRepo = r.ChartVariables.RancherChartRepoOverride
 	} else {
-		baseRepo := "https://releases.rancher.com/server-charts/"
+			baseRepo := "https://charts.optimus.rancher.io/server-charts/"
 
-		// otherwise, if one of "alpha", or "latest"
-		if strings.Contains(r.ChartVariables.RancherVersion, "alpha") {
-			rancherRepo = baseRepo + "alpha/rancher-"
-		} else {
-			rancherRepo = baseRepo + "latest/rancher-"
-		}
+			// otherwise, if one of "alpha", or "latest"
+			if strings.Contains(r.ChartVariables.RancherVersion, "alpha") {
+					rancherRepo = baseRepo + "alpha/rancher-"
+			} else {
+					rancherRepo = baseRepo + "latest/rancher-"
+			}
 
-		// "prime"
-		if r.ChartVariables.ForcePrimeRegistry {
-			rancherRepo = "https://charts.rancher.com/server-charts/prime/rancher-"
-		}
+			// "prime"
+			if r.ChartVariables.ForcePrimeRegistry {
+					rancherRepo = "https://charts.optimus.rancher.io/server-charts/alpha/rancher-"
+			}
 	}
 
 	chartRancher := chart{
