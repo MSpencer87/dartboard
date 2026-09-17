@@ -20,7 +20,7 @@ This will produce a `qase-k6-cli` binary inside the `qase-k6-cli/` directory.
 
 ## Usage
 
-The tool is configured via environment variables and command-line flags and has two subcommands: `report` and `gather`.
+The tool is configured via environment variables and command-line flags and has three subcommands: `report`, `gather`, and `summary`.
 
 ### Report
 
@@ -58,6 +58,20 @@ export QASE_TESTOPS_API_TOKEN=TOKEN
 export QASE_TESTOPS_PROJECT=PRJ
 
 ./qase-k6-cli gather -runID 42
+```
+
+### Summary
+
+Fetches aggregate pass/fail stats for a Qase test run and prints them as
+`KEY=VALUE` lines (`QASE_RUN_TOTAL`, `QASE_RUN_PASSED`, `QASE_RUN_FAILED`,
+`QASE_RUN_PASS_PERCENT`, `QASE_RUN_URL`) so a CI pipeline can source them into
+environment variables, e.g. for a Slack notification.
+
+```shell
+export QASE_TESTOPS_API_TOKEN=TOKEN
+export QASE_TESTOPS_PROJECT=PRJ
+
+./qase-k6-cli summary -runID 42
 ```
 
 ### Environment Variables
