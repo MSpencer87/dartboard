@@ -54,7 +54,7 @@ func runSummary(runIDOverride string) {
 		passPercent = float64(passed) / float64(total) * 100
 	}
 
-	runURL := fmt.Sprintf("https://app.qase.io/run/%s/dashboard/%d", projectID, runIDVal)
+	runURL := fmt.Sprintf("https://app.qase.io/run/%s/dartboard/%d", projectID, runIDVal)
 
 	fmt.Printf("QASE_RUN_TOTAL=%d\n", total)
 	fmt.Printf("QASE_RUN_PASSED=%d\n", passed)

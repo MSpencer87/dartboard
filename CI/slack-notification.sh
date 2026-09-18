@@ -12,40 +12,30 @@ send_slack_notification() {
 	local bot_token="$3"
 	local channel="$4"
 
-	if [ -z "$bot_token" ]; then
-		echo "Warning: DARTBOARD_SLACK_BOT_TOKEN not set, skipping Slack notification"
+	if [ -z "$bot_token" ] || [ -z "$channel" ]; then
+		echo "DARTBOARD_SLACK_BOT_TOKEN and DARTBOARD_SLACK_CHANNEL must be set"
 		return 1
 	fi
 
-	# Prepare the JSON payload
-	local payload=$(
-		cat <<EOF
-{
-    "channel": "$channel",
-    "text": "$message",
-    "username": "Dartboard Test Reporter"
-}
-EOF
-	)
+	local payload
+	payload=$(jq -n --arg channel "$channel" --arg text "$message" \
+		'{channel: $channel, text: $text, username: "Dartboard Test Reporter"}')
 
-	# Send the notification using Slack Web API
-	# Try-catch block to handle any errors when communicating with Slack API
-	set +e # Disable exit on error for try block
 	# Bounded: this runs in the post block, so a stalled Slack call would hold
 	# the build open against the outer timeout rather than the few seconds a
 	# notification is worth.
-	curl -X POST \
+	local response
+	if ! response=$(curl --fail --silent --show-error -X POST \
 		--connect-timeout 10 --max-time 30 --retry 2 --retry-delay 3 \
 		-H "Content-type: application/json; charset=utf-8" \
 		-H "Authorization: Bearer $bot_token" \
 		--data "$payload" \
-		"https://slack.com/api/chat.postMessage" >/dev/null 2>&1
-	local curl_exit_code=$?
-	set -e # Re-enable exit on error
-
-	# Catch block - handle any errors
-	if [ $curl_exit_code -ne 0 ]; then
-		echo "Error: Failed to send Slack notification"
+		"https://slack.com/api/chat.postMessage"); then
+		echo "Failed to send Slack notification"
+		return 1
+	fi
+	if ! jq -e '.ok == true' >/dev/null <<<"$response"; then
+		echo "Slack API rejected the notification"
 		return 1
 	fi
 
@@ -85,7 +75,7 @@ send_jenkins_e2e_notification() {
 		status_text="UNSTABLE"
 	fi
 
-	local message="*E2E Tests $status_text* $emoji\n"
+	local message="*k6 Tests $status_text* $emoji\n"
 	message+="• *Job:* $job_name\n"
 
 	# Add build number with link
