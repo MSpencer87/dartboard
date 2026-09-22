@@ -54,20 +54,44 @@ pipeline {
           downstreamResult(deployBuild, 'Deploy')
 
           // dartboard-choice archives dartboard/rendered-dart.yaml
-          sh 'rm -rf dartboard/rendered-dart.yaml'
+          echo "[DEBUG] Cleaning up old artifact copies..."
+          sh 'rm -rf dartboard/rendered-dart.yaml rendered-dart.yaml'
+
+          echo "[DEBUG] Copying artifact from dartboard-choice build #${deployBuild.number}..."
           copyArtifacts(
             filter: 'dartboard/rendered-dart.yaml',
             projectName: 'dartboard-choice',
             selector: specific("${deployBuild.number}")
           )
 
-          def artifactPath = 'dartboard/rendered-dart.yaml'
-          if (!fileExists(artifactPath)) {
-            error("Deploy artifact was not found at expected path: ${artifactPath}")
+          echo "[DEBUG] Inspecting workspace for rendered-dart.yaml..."
+          sh 'find . -maxdepth 3 -name "*rendered-dart.yaml*"'
+
+          def artifactPath = fileExists('dartboard/rendered-dart.yaml') ? 'dartboard/rendered-dart.yaml' :
+                             (fileExists('rendered-dart.yaml') ? 'rendered-dart.yaml' : null)
+
+          if (!artifactPath) {
+            echo "[DEBUG] Artifact not found at expected paths. Listing workspace tree:"
+            sh 'ls -laR .'
+            error("Deploy artifact was not found at 'dartboard/rendered-dart.yaml' or 'rendered-dart.yaml'.")
           }
 
-          def renderedDart = readYaml file: artifactPath
+          echo "[DEBUG] Deploy artifact found at: ${artifactPath}"
+          echo "[DEBUG] --- Content of ${artifactPath} ---"
+          sh "cat '${artifactPath}'"
+          echo "[DEBUG] ----------------------------------"
+
+          echo "[DEBUG] Parsing YAML from ${artifactPath}..."
+          def renderedDart
+          try {
+            renderedDart = readYaml file: artifactPath
+            echo "[DEBUG] Successfully parsed YAML. Root keys: ${renderedDart?.keySet()}"
+          } catch (Exception e) {
+            error("Failed to parse YAML from ${artifactPath}: ${e.message}")
+          }
+
           deploymentId = renderedDart?.tofu_variables?.project_name?.toString()
+          echo "[DEBUG] Extracted deploymentId: '${deploymentId}'"
 
           if (!deploymentId || deploymentId.startsWith('$')) {
             error("Deploy artifact did not contain a resolved project_name: ${deploymentId}")
