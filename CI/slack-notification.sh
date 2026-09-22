@@ -18,24 +18,25 @@ send_slack_notification() {
 	fi
 
 	local payload
-	payload=$(jq -n --arg channel "$channel" --arg text "$message" \
-		'{channel: $channel, text: $text, username: "Dartboard Test Reporter"}')
+	payload=$(cat <<EOF
+{
+  "channel": "$channel",
+  "text": "$message",
+  "username": "Dartboard Test Reporter"
+}
+EOF
+)
 
 	# Bounded: this runs in the post block, so a stalled Slack call would hold
 	# the build open against the outer timeout rather than the few seconds a
 	# notification is worth.
-	local response
-	if ! response=$(curl --fail --silent --show-error -X POST \
+	if ! curl --fail --silent --show-error -X POST \
 		--connect-timeout 10 --max-time 30 --retry 2 --retry-delay 3 \
 		-H "Content-type: application/json; charset=utf-8" \
 		-H "Authorization: Bearer $bot_token" \
 		--data "$payload" \
-		"https://slack.com/api/chat.postMessage"); then
+		"https://slack.com/api/chat.postMessage"; then
 		echo "Failed to send Slack notification"
-		return 1
-	fi
-	if ! jq -e '.ok == true' >/dev/null <<<"$response"; then
-		echo "Slack API rejected the notification"
 		return 1
 	fi
 
