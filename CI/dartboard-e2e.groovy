@@ -9,14 +9,18 @@ def deploymentCreated = false
 def qaseK6Build
 
 def downstreamResult(buildResult, jobName) {
+  if (buildResult?.number) {
+    echo "${jobName} build #${buildResult.number} finished with result: ${buildResult.result ?: 'UNKNOWN'}"
+  }
   if (buildResult?.result == 'SUCCESS') {
     return
   }
   if (buildResult?.result == 'UNSTABLE') {
     currentBuild.result = 'UNSTABLE'
+    echo "${jobName} finished with UNSTABLE status."
     return
   }
-  error("${jobName} finished with result ${buildResult?.result ?: 'UNKNOWN'}")
+  error("${jobName} build #${buildResult?.number} failed with result: ${buildResult?.result ?: 'UNKNOWN'}")
 }
 
 def choiceParameters(command, deploymentIdValue = deploymentId) {
@@ -49,21 +53,26 @@ pipeline {
           )
           downstreamResult(deployBuild, 'Deploy')
 
-          // copy the rendered dart artifact from deploy, extract deploymentId for Load & Destroy
+          // dartboard-choice archives dartboard/rendered-dart.yaml
+          sh 'rm -rf dartboard/rendered-dart.yaml'
           copyArtifacts(
-            filter: 'dartboard/**/rendered-dart.yaml',
-            flatten: true,
+            filter: 'dartboard/rendered-dart.yaml',
             projectName: 'dartboard-choice',
             selector: specific("${deployBuild.number}")
           )
-          if (!fileExists('rendered-dart.yaml')) {
-            error('Deploy artifact rendered-dart.yaml was not found.')
+
+          def artifactPath = 'dartboard/rendered-dart.yaml'
+          if (!fileExists(artifactPath)) {
+            error("Deploy artifact was not found at expected path: ${artifactPath}")
           }
-          def renderedDart = readYaml file: 'rendered-dart.yaml'
+
+          def renderedDart = readYaml file: artifactPath
           deploymentId = renderedDart?.tofu_variables?.project_name?.toString()
+
           if (!deploymentId || deploymentId.startsWith('$')) {
             error("Deploy artifact did not contain a resolved project_name: ${deploymentId}")
           }
+
           currentBuild.description = "Deployment ${deploymentId}"
           echo "Using deployment ID from Deploy artifact: ${deploymentId}"
           deploymentCreated = true
@@ -74,6 +83,9 @@ pipeline {
     stage('Load') {
       steps {
         script {
+          if (!deploymentId) {
+            error('Cannot execute Load stage: deploymentId is empty.')
+          }
           downstreamResult(build(
             job: 'dartboard-choice',
             parameters: choiceParameters('load'), //deploymentId passed implicitly
@@ -87,6 +99,9 @@ pipeline {
     stage('Run Qase Test Suite') {
       steps {
         script {
+          if (!deploymentId) {
+            error('Cannot execute Qase Test Suite: deploymentId is empty.')
+          }
           qaseK6Build = build(
             job: 'qase-k6-runner',
             parameters: [
@@ -117,25 +132,32 @@ pipeline {
           echo "DESTROY is disabled; leaving deployment '${deploymentId}' running."
         } else {
           echo "Destroying deployment '${deploymentId}'..."
-          def destroyBuild = build(
-            job: 'dartboard-choice',
-            parameters: choiceParameters('destroy'),
-            propagate: false,
-            wait: true
-          )
-          if (destroyBuild?.result != 'SUCCESS') {
+          try {
+            def destroyBuild = build(
+              job: 'dartboard-choice',
+              parameters: choiceParameters('destroy'),
+              propagate: false,
+              wait: true
+            )
+            if (destroyBuild?.number) {
+              echo "Destroy build #${destroyBuild.number} finished with result: ${destroyBuild.result ?: 'UNKNOWN'}"
+            }
+            if (destroyBuild?.result != 'SUCCESS') {
+              currentBuild.result = 'UNSTABLE'
+              echo "Destroy finished with result: ${destroyBuild?.result ?: 'UNKNOWN'}"
+            }
+          } catch (Exception e) {
             currentBuild.result = 'UNSTABLE'
-            echo "Destroy finished with result ${destroyBuild?.result ?: 'UNKNOWN'}."
+            echo "Failed to trigger or complete Destroy build: ${e.message}"
           }
         }
 
         if (params.SLACK_NOTIFICATION) {
-          sh "rm -f qase-runstats.env"
+          sh 'rm -rf dartboard/qase-runstats.env'
           if (qaseK6Build?.number) {
             try {
               copyArtifacts(
                 filter: 'dartboard/qase-runstats.env',
-                flatten: true,
                 projectName: 'qase-k6-runner',
                 selector: specific("${qaseK6Build.number}")
               )
@@ -149,16 +171,16 @@ pipeline {
           property.useWithCredentials(['DARTBOARD_SLACK_BOT_TOKEN', 'DARTBOARD_SLACK_CHANNEL']) {
             def notificationStatus = sh(
               script: """
-                if [ -f qase-runstats.env ]; then
-                  if [ "\$(wc -l < qase-runstats.env)" -eq 6 ] && \\
-                    grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' qase-runstats.env; then
+                if [ -f dartboard/qase-runstats.env ]; then
+                  if [ "\$(wc -l < dartboard/qase-runstats.env)" -eq 6 ] && \\
+                    grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' dartboard/qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' dartboard/qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' dartboard/qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' dartboard/qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' dartboard/qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' dartboard/qase-runstats.env; then
                     set -a
-                    . ./qase-runstats.env
+                    . ./dartboard/qase-runstats.env
                     set +a
                   else
                     echo 'Skipping Qase run stats artifact: required values are invalid.'
@@ -178,6 +200,9 @@ pipeline {
           echo 'SLACK_NOTIFICATION is disabled; skipping Slack notification.'
         }
       }
+    }
+    cleanup {
+      cleanWs notFailFast: true
     }
   }
 }
