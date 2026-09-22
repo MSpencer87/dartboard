@@ -6,6 +6,7 @@
 
 def deploymentId
 def deploymentCreated = false
+def qaseK6Build
 
 def downstreamResult(buildResult, jobName) {
   if (buildResult?.result == 'SUCCESS') {
@@ -86,7 +87,7 @@ pipeline {
     stage('Run Qase Test Suite') {
       steps {
         script {
-          downstreamResult(build(
+          qaseK6Build = build(
             job: 'qase-k6-runner',
             parameters: [
               string(name: 'REPO', value: params.REPO ?: ''),
@@ -100,7 +101,8 @@ pipeline {
             ],
             propagate: false,
             wait: true
-          ), 'Run Qase Test Suite')
+          )
+          downstreamResult(qaseK6Build, 'Run Qase Test Suite')
         }
       }
     }
@@ -128,9 +130,44 @@ pipeline {
         }
 
         if (params.SLACK_NOTIFICATION) {
+          sh "rm -f qase-runstats.env"
+          if (qaseK6Build?.number) {
+            try {
+              copyArtifacts(
+                filter: 'dartboard/qase-runstats.env',
+                flatten: true,
+                projectName: 'qase-k6-runner',
+                selector: specific("${qaseK6Build.number}")
+              )
+            } catch (e) {
+              echo "Qase run stats artifact was unavailable: ${e.message}"
+            }
+          } else {
+            echo 'Qase run stats artifact was unavailable: qase-k6-runner did not start.'
+          }
+
           property.useWithCredentials(['DARTBOARD_SLACK_BOT_TOKEN', 'DARTBOARD_SLACK_CHANNEL']) {
             def notificationStatus = sh(
-              script: "bash CI/slack-notification.sh ${currentBuild.currentResult}",
+              script: """
+                if [ -f qase-runstats.env ]; then
+                  if [ "\$(wc -l < qase-runstats.env)" -eq 6 ] && \\
+                    grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' qase-runstats.env && \\
+                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' qase-runstats.env; then
+                    set -a
+                    . ./qase-runstats.env
+                    set +a
+                  else
+                    echo 'Skipping Qase run stats artifact: required values are invalid.'
+                  fi
+                else
+                  echo 'Skipping Qase run stats artifact: artifact was not found.'
+                fi
+                bash CI/slack-notification.sh ${currentBuild.currentResult}
+              """,
               returnStatus: true
             )
             if (notificationStatus != 0) {

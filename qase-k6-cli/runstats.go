@@ -11,10 +11,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// runSummary fetches aggregate pass/fail stats for a Qase test run and prints
+// getRunStats fetches aggregate pass/fail stats for a Qase test run and prints
 // them as KEY=VALUE lines so a CI pipeline can source them into env vars.
-func runSummary(runIDOverride string) {
-	logrus.Info("Running qase-k6-cli summary")
+func getRunStats(runIDOverride string) {
+	logrus.Info("Running qase-k6-cli runstats")
 
 	if projectID == "" {
 		logrus.Fatalf("Missing required environment variable: %s", qase_config.QaseTestOpsProjectEnvVar)
@@ -26,7 +26,7 @@ func runSummary(runIDOverride string) {
 	}
 
 	if runIDStr == "" {
-		logrus.Fatal("runID is required for summary subcommand")
+		logrus.Fatal("runID is required for runstats subcommand")
 	}
 
 	runIDVal, err := strconv.ParseInt(runIDStr, 10, 64)
@@ -46,7 +46,29 @@ func runSummary(runIDOverride string) {
 	stats := run.GetStats()
 	total := int64(stats.GetTotal())
 	passed := int64(stats.GetPassed())
-	failed := int64(stats.GetFailed())
+
+	statusCounts, err := qaseClient.GetRunResultStatusCounts(context.Background(), projectID, runIDVal)
+	if err != nil {
+		logrus.Warnf("Unable to resolve Qase run result statuses: %v", err)
+		return
+	}
+
+	resolvedTotal := int64(0)
+	for _, count := range statusCounts {
+		resolvedTotal += count
+	}
+
+	if total != resolvedTotal || passed != statusCounts[qase.StatusPassed] {
+		logrus.Warnf("Qase run stats do not match resolved result statuses: stats total=%d passed=%d, results total=%d passed=%d", total, passed, resolvedTotal, statusCounts[qase.StatusPassed])
+		return
+	}
+
+	failed := statusCounts[qase.StatusFailed]
+	exceededThresholds := statusCounts[qase.StatusExceededThresholds]
+	if passed+failed+exceededThresholds != total {
+		logrus.Warnf("Qase run result statuses include values that cannot be represented in the run stats summary: %v", statusCounts)
+		return
+	}
 
 	// Percentage is undefined for an empty run; report 0 rather than dividing by zero.
 	var passPercent float64
@@ -59,6 +81,7 @@ func runSummary(runIDOverride string) {
 	fmt.Printf("QASE_RUN_TOTAL=%d\n", total)
 	fmt.Printf("QASE_RUN_PASSED=%d\n", passed)
 	fmt.Printf("QASE_RUN_FAILED=%d\n", failed)
+	fmt.Printf("QASE_RUN_EXCEEDED_THRESHOLDS=%d\n", exceededThresholds)
 	fmt.Printf("QASE_RUN_PASS_PERCENT=%.0f\n", passPercent)
 	fmt.Printf("QASE_RUN_URL=%s\n", runURL)
 

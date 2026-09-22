@@ -338,12 +338,52 @@ ${safeK6Env}
   post {
     always {
       script {
+        dir('dartboard') {
+          def safeRunID = (params.QASE_TESTOPS_RUN_ID ?: "").replaceAll("[^0-9]", "")
+          def safeProject = (params.QASE_TESTOPS_PROJECT ?: "").replaceAll(sanitizeCharacterRegex, "")
+
+          sh "rm -f qase-runstats.env"
+          if (!safeRunID || !safeProject) {
+            echo "Skipping Qase run stats: QASE_TESTOPS_PROJECT or QASE_TESTOPS_RUN_ID is invalid."
+          } else {
+            try {
+              withEnv(["QASE_PROJECT=${safeProject}", "QASE_RUN_ID=${safeRunID}"]) {
+                withCredentials([string(credentialsId: "QASE_AUTOMATION_TOKEN", variable: "QASE_TESTOPS_API_TOKEN")]) {
+                  sh """
+                    docker run --rm --name dartboard-qase-runstats \\
+                      -v "${pwd()}:/app" \\
+                      --workdir /app \\
+                      --user=\$(id -u) \\
+                      --entrypoint='' \\
+                      -e QASE_TESTOPS_API_TOKEN \\
+                      -e QASE_TESTOPS_PROJECT="\${QASE_PROJECT}" \\
+                      -e QASE_TESTOPS_RUN_ID="\${QASE_RUN_ID}" \\
+                      ${env.IMAGE_NAME}:latest qase-k6-cli runstats -runID "\${QASE_RUN_ID}" > qase-runstats.env
+
+                    test "\$(wc -l < qase-runstats.env)" -eq 6
+                    grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' qase-runstats.env
+                  """
+                }
+              }
+            } catch (e) {
+              sh "rm -f qase-runstats.env"
+              echo "Skipping Qase run stats: ${e.message}"
+            }
+          }
+        }
+
         echo "Archiving k6 test results..."
         archiveArtifacts artifacts: """
           dartboard/*.json,
           dartboard/*.log,
           dartboard/*.html,
           dartboard/*.xml,
+          dartboard/qase-runstats.env,
         """.trim(), fingerprint: true
 
         // The k6 container is run with --rm, so it should clean itself up.

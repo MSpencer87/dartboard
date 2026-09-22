@@ -85,14 +85,21 @@ send_jenkins_e2e_notification() {
 		message+="• *Build:* #$build_number\n"
 	fi
 
-	# Qase test run summary, published by the qase-k6-cli 'summary' subcommand
+	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
 	local qase_summary=""
 
-	if [ -n "${QASE_RUN_TOTAL:-}" ] && [ "${QASE_RUN_TOTAL}" -gt 0 ] 2>/dev/null; then
-		qase_summary="${QASE_RUN_PASS_PERCENT:-0}% Pass (${QASE_RUN_PASSED:-0}/${QASE_RUN_TOTAL}) — ${QASE_RUN_FAILED:-0} failed"
-		if [ -n "${QASE_RUN_URL:-}" ]; then
+	if [[ "${QASE_RUN_TOTAL:-}" =~ ^[0-9]+$ &&
+		"${QASE_RUN_PASSED:-}" =~ ^[0-9]+$ &&
+		"${QASE_RUN_FAILED:-}" =~ ^[0-9]+$ &&
+		"${QASE_RUN_EXCEEDED_THRESHOLDS:-}" =~ ^[0-9]+$ &&
+		"${QASE_RUN_PASS_PERCENT:-}" =~ ^[0-9]+$ &&
+		"${QASE_RUN_URL:-}" =~ ^https://app\.qase\.io/run/[^[:space:]/]+/dartboard/[0-9]+$ ]]; then
+		qase_summary="${QASE_RUN_PASS_PERCENT}% Pass (${QASE_RUN_PASSED}/${QASE_RUN_TOTAL}) - ${QASE_RUN_FAILED} failed, ${QASE_RUN_EXCEEDED_THRESHOLDS} thresholds exceeded"
+		if [ -n "${QASE_RUN_URL}" ]; then
 			qase_summary="<${QASE_RUN_URL}|${qase_summary}>"
 		fi
+	else
+		echo "Skipping Qase run summary: required QASE_RUN_* values are unavailable or invalid."
 	fi
 
 	message+=$(append_field "Qase Run" "$qase_summary")
