@@ -23,7 +23,7 @@ def downstreamResult(buildResult, jobName) {
   error("${jobName} build #${buildResult?.number} failed with result: ${buildResult?.result ?: 'UNKNOWN'}")
 }
 
-def choiceParameters(command, deploymentIdValue = deploymentId) {
+def choiceParameters(command, deploymentIdValue = '') {
   return [
     string(name: 'REPO', value: params.REPO ?: ''),
     string(name: 'BRANCH', value: params.BRANCH ?: ''),
@@ -105,12 +105,14 @@ pipeline {
           if (!deploymentId) {
             error('Cannot execute Load stage: deploymentId is empty.')
           }
-          downstreamResult(build(
+          echo "Scheduling Load job for deployment '${deploymentId}'..."
+          def loadBuild = build(
             job: 'dartboard-choice',
-            parameters: choiceParameters('load'), //deploymentId passed implicitly
+            parameters: choiceParameters('load', deploymentId),
             propagate: false,
             wait: true
-          ), 'Load')
+          )
+          downstreamResult(loadBuild, 'Load')
         }
       }
     }
@@ -154,7 +156,7 @@ pipeline {
           try {
             def destroyBuild = build(
               job: 'dartboard-choice',
-              parameters: choiceParameters('destroy'),
+              parameters: choiceParameters('destroy', deploymentId),
               propagate: false,
               wait: true
             )
