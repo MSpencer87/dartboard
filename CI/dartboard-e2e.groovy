@@ -81,17 +81,15 @@ pipeline {
           sh "cat '${artifactPath}'"
           echo "[DEBUG] ----------------------------------"
 
-          echo "[DEBUG] Parsing YAML from ${artifactPath}..."
-          def renderedDart
-          try {
-            renderedDart = readYaml file: artifactPath
-            echo "[DEBUG] Successfully parsed YAML. Root keys: ${renderedDart?.keySet()}"
-          } catch (Exception e) {
-            error("Failed to parse YAML from ${artifactPath}: ${e.message}")
-          }
+          echo "[DEBUG] Extracting project_name from ${artifactPath}..."
+          deploymentId = sh(
+            script: """
+              grep -E '^[[:space:]]*project_name:' '${artifactPath}' | head -n 1 | sed -E 's/^[[:space:]]*project_name:[[:space:]]*["\\']?([^"\\']*)["\\']?.*/\\1/' | tr -d '\\r\\n'
+            """,
+            returnStdout: true
+          ).trim()
 
-          deploymentId = renderedDart?.tofu_variables?.project_name?.toString()
-          echo "[DEBUG] Extracted deploymentId: '${deploymentId}'"
+          echo "[DEBUG] Extracted deployment ID: '${deploymentId}'"
 
           if (!deploymentId || deploymentId.startsWith('$')) {
             error("Deploy artifact did not contain a resolved project_name: ${deploymentId}")
