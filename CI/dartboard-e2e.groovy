@@ -82,12 +82,9 @@ pipeline {
           echo "[DEBUG] ----------------------------------"
 
           echo "[DEBUG] Extracting project_name from ${artifactPath}..."
-          deploymentId = sh(
-            script: """
-              grep -E '^[[:space:]]*project_name:' '${artifactPath}' | head -n 1 | sed -E 's/^[[:space:]]*project_name:[[:space:]]*["\\']?([^"\\']*)["\\']?.*/\\1/' | tr -d '\\r\\n'
-            """,
-            returnStdout: true
-          ).trim()
+          def dartContent = readFile(artifactPath)
+          def projectLine = dartContent.readLines().find { it.trim().startsWith('project_name:') }
+          deploymentId = projectLine ? projectLine.split(':', 2)[1].split('#')[0].replaceAll(/["'\s]/, '') : ''
 
           echo "[DEBUG] Extracted deployment ID: '${deploymentId}'"
 
