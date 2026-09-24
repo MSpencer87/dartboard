@@ -17,9 +17,7 @@ send_slack_notification() {
 		return 1
 	fi
 
-	# Sanitize token: remove surrounding quotes, carriage returns, and leading "Bearer "
-	bot_token=$(echo "$bot_token" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^Bearer //' -e 's/^["\x27]//' -e 's/["\x27]$//')
-	channel=$(echo "$channel" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^["\x27]//' -e 's/["\x27]$//')
+	echo $channel
 
 	local payload
 	payload=$(cat <<EOF
