@@ -163,6 +163,7 @@ pipeline {
     stage('Mock Data') {
       steps {
         script {
+          // build mock data for testing slack notif in post
           env.RANCHER_VERSION = 'v2.10.2'
           env.KUBERNETES_VERSION = 'v1.31.2'
 
@@ -209,6 +210,7 @@ QASE_RUN_URL=https://app.qase.io/run/DEMO/dashboard/12345
 
         // Fetch and validate test run statistics
         if (params.SLACK_NOTIFICATION) {
+          sh 'rm -rf dartboard/qase-runstats.env'
           if (qaseK6Build?.number) {
             sh 'rm -rf dartboard/qase-runstats.env'
             try {
@@ -221,12 +223,13 @@ QASE_RUN_URL=https://app.qase.io/run/DEMO/dashboard/12345
               echo "Qase run stats artifact was unavailable: ${e.message}"
             }
           } else {
+            echo 'Qase run stats artifact was unavailable: dartboard-qase-k6-runner did not start.'
             echo 'dartboard-qase-k6-runner did not start; checking for existing or mock run stats.'
           }
 
           withCredentials([
-            string(credentialsId: 'DARTBOARD_SLACK_BOT_TOKEN', variable: 'DARTBOARD_SLACK_BOT_TOKEN'),
-            string(credentialsId: 'DARTBOARD_SLACK_CHANNEL', variable: 'DARTBOARD_SLACK_CHANNEL')
+            usernamePassword(credentialsId: 'DARTBOARD_SLACK_BOT_TOKEN', usernameVariable: 'DARTBOARD_SLACK_BOT_KEY', passwordVariable: 'DARTBOARD_SLACK_BOT_TOKEN'),
+            usernamePassword(credentialsId: 'DARTBOARD_SLACK_CHANNEL', usernameVariable: 'DARTBOARD_SLACK_CHANNEL_KEY', passwordVariable: 'DARTBOARD_SLACK_CHANNEL')
           ]) {
             def notificationStatus = sh(
               script: """
