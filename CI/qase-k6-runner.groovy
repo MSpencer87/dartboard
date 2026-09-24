@@ -22,6 +22,7 @@ pipeline {
     ARTIFACTS_DIR       = 'deployment-artifacts'
     ACCESS_LOG          = 'access-details.log'
     KUBECONFIG_FILE     = 'upstream.yaml'
+    QASE_RUNSTATS_FILE  = 'qase-runstats.env'
     // renovate: datasource=docker depName=amazon/aws-cli
     AWS_CLI_VERSION     = '2.34.22'
     // renovate: datasource=docker depName=amazon/aws-cli digestVersion=2.34.22
@@ -384,8 +385,8 @@ ${safeK6Env}
           dartboard/*.log,
           dartboard/*.html,
           dartboard/*.xml,
-          dartboard/qase-runstats.env
-        """.trim(), fingerprint: true
+          dartboard/${env.QASE_RUNSTATS_FILE}
+        """.trim(), fingerprint: true, allowEmptyArchive: true
 
         // The k6 container is run with --rm, so it should clean itself up.
         // But if the job is aborted, the container might be left running.
@@ -436,7 +437,7 @@ ${safeK6Env}
           echo "Removing all non-artifact files and directories..."
           find . -mindepth 1 -maxdepth 1 \\
             -not -name '*.html' -not -name '*.json' -not -name '*.log' -not -name '*.xml' \\
-            -not -name 'qase-runstats.env' \\
+            -not -name "${env.QASE_RUNSTATS_FILE}" \\
             -exec rm -rf {} +
         """
       }
