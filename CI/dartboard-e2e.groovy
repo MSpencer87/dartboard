@@ -23,7 +23,7 @@ def downstreamResult(buildResult, jobName) {
   error("${jobName} build #${buildResult?.number} failed with result: ${buildResult?.result ?: 'UNKNOWN'}")
 }
 
-def choiceParameters(command, deploymentIdValue = '') {
+def choiceParameters(command, deploymentIdValue) {
   return [
     string(name: 'REPO', value: params.REPO ?: ''),
     string(name: 'BRANCH', value: params.BRANCH ?: ''),
@@ -93,6 +93,7 @@ pipeline {
           }
 
           currentBuild.description = "Deployment ${deploymentId}"
+          env.DEPLOYMENT_ID = deploymentId
           echo "Using deployment ID from Deploy artifact: ${deploymentId}"
           deploymentCreated = true
         }
@@ -102,17 +103,24 @@ pipeline {
     stage('Load') {
       steps {
         script {
-          if (!deploymentId) {
-            error('Cannot execute Load stage: deploymentId is empty.')
+          try {
+            def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
+            if (!targetDeploymentId) {
+              error('Cannot execute Load stage: deploymentId is empty.')
+            }
+            echo ">>> [STAGE: LOAD] Starting dartboard-choice 'load' for deployment '${targetDeploymentId}'..."
+            def loadBuild = build(
+              job: 'dartboard-choice',
+              parameters: choiceParameters('load', targetDeploymentId),
+              propagate: false,
+              wait: true
+            )
+            downstreamResult(loadBuild, 'Load')
+            echo ">>> [STAGE: LOAD] Completed successfully."
+          } catch (Throwable t) {
+            echo "Load stage failed with error: ${t.class.name}: ${t.message}"
+            throw t
           }
-          echo "Scheduling Load job for deployment '${deploymentId}'..."
-          def loadBuild = build(
-            job: 'dartboard-choice',
-            parameters: choiceParameters('load', deploymentId),
-            propagate: false,
-            wait: true
-          )
-          downstreamResult(loadBuild, 'Load')
         }
       }
     }
@@ -120,25 +128,33 @@ pipeline {
     stage('Run Qase Test Suite') {
       steps {
         script {
-          if (!deploymentId) {
-            error('Cannot execute Qase Test Suite: deploymentId is empty.')
+          try {
+            def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
+            if (!targetDeploymentId) {
+              error('Cannot execute Qase Test Suite: deploymentId is empty.')
+            }
+            echo ">>> [STAGE: TEST] Triggering qase-k6-runner for deployment '${targetDeploymentId}'..."
+            qaseK6Build = build(
+              job: 'qase-k6-runner',
+              parameters: [
+                string(name: 'REPO', value: params.REPO ?: ''),
+                string(name: 'BRANCH', value: params.BRANCH ?: ''),
+                string(name: 'DEPLOYMENT_ID', value: targetDeploymentId),
+                string(name: 'S3_BUCKET_NAME', value: params.S3_BUCKET_NAME ?: ''),
+                string(name: 'S3_BUCKET_REGION', value: params.S3_BUCKET_REGION ?: ''),
+                string(name: 'QASE_TESTOPS_PROJECT', value: params.QASE_TESTOPS_PROJECT ?: ''),
+                string(name: 'QASE_TESTOPS_RUN_ID', value: params.QASE_TESTOPS_RUN_ID ?: ''),
+                string(name: 'K6_ENV', value: params.K6_ENV ?: '')
+              ],
+              propagate: false,
+              wait: true
+            )
+            downstreamResult(qaseK6Build, 'Run Qase Test Suite')
+            echo ">>> [STAGE: TEST] Completed successfully."
+          } catch (Throwable t) {
+            echo "Qase Test Suite stage failed with error: ${t.class.name}: ${t.message}"
+            throw t
           }
-          qaseK6Build = build(
-            job: 'qase-k6-runner',
-            parameters: [
-              string(name: 'REPO', value: params.REPO ?: ''),
-              string(name: 'BRANCH', value: params.BRANCH ?: ''),
-              string(name: 'DEPLOYMENT_ID', value: deploymentId),
-              string(name: 'S3_BUCKET_NAME', value: params.S3_BUCKET_NAME ?: ''),
-              string(name: 'S3_BUCKET_REGION', value: params.S3_BUCKET_REGION ?: ''),
-              string(name: 'QASE_TESTOPS_PROJECT', value: params.QASE_TESTOPS_PROJECT ?: ''),
-              string(name: 'QASE_TESTOPS_RUN_ID', value: params.QASE_TESTOPS_RUN_ID ?: ''),
-              string(name: 'K6_ENV', value: params.K6_ENV ?: '')
-            ],
-            propagate: false,
-            wait: true
-          )
-          downstreamResult(qaseK6Build, 'Run Qase Test Suite')
         }
       }
     }
@@ -152,11 +168,12 @@ pipeline {
         } else if (!params.DESTROY) {
           echo "DESTROY is disabled; leaving deployment '${deploymentId}' running."
         } else {
-          echo "Destroying deployment '${deploymentId}'..."
+          def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
+          echo "Destroying deployment '${targetDeploymentId}'..."
           try {
             def destroyBuild = build(
               job: 'dartboard-choice',
-              parameters: choiceParameters('destroy', deploymentId),
+              parameters: choiceParameters('destroy', targetDeploymentId),
               propagate: false,
               wait: true
             )
