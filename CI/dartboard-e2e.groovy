@@ -197,12 +197,11 @@ pipeline {
               script: """
                 # Validate expected format and key constraints before sourcing
                 if [ -f dartboard/qase-runstats.env ]; then
-                  if [ "\$(wc -l < dartboard/qase-runstats.env)" -eq 6 ] && \\
+                  if [ "\$(wc -l < dartboard/qase-runstats.env)" -eq 5 ] && \\
                     grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dashboard/[0-9]+\$' dartboard/qase-runstats.env; then
                     set -a
                     . ./dartboard/qase-runstats.env

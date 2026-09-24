@@ -360,12 +360,11 @@ ${safeK6Env}
                       -e QASE_TESTOPS_RUN_ID="\${QASE_RUN_ID}" \\
                       ${env.IMAGE_NAME}:latest qase-k6-cli runstats -runID "\${QASE_RUN_ID}" > qase-runstats.env
 
-                    test "\$(wc -l < qase-runstats.env)" -eq 6
+                    test "\$(wc -l < qase-runstats.env)" -eq 5
                     grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' qase-runstats.env
-                    grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dashboard/[0-9]+\$' qase-runstats.env
                   """
                 }

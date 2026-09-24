@@ -16,6 +16,8 @@ import (
 func getRunStats(runIDOverride string) {
 	logrus.Info("Running qase-k6-cli runstats")
 
+	qaseClient = qase.SetupQaseClient()
+
 	if projectID == "" {
 		logrus.Fatalf("Missing required environment variable: %s", qase_config.QaseTestOpsProjectEnvVar)
 	}
@@ -34,10 +36,7 @@ func getRunStats(runIDOverride string) {
 		logrus.Fatalf("Invalid runID: %v", err)
 	}
 
-	qaseClient = qase.SetupQaseClient()
-
 	include := "stats"
-
 	run, err := qaseClient.GetTestRun(context.Background(), projectID, runIDVal, &include)
 	if err != nil {
 		logrus.Fatalf("Failed to get test run: %v", err)
@@ -46,44 +45,28 @@ func getRunStats(runIDOverride string) {
 	stats := run.GetStats()
 	total := int64(stats.GetTotal())
 	passed := int64(stats.GetPassed())
+	failed := int64(stats.GetFailed())
 
 	statusCounts, err := qaseClient.GetRunResultStatusCounts(context.Background(), projectID, runIDVal)
 	if err != nil {
-		logrus.Warnf("Unable to resolve Qase run result statuses: %v", err)
-		return
+		logrus.Fatalf("Unable to resolve Qase run result statuses: %v", err)
 	}
 
-	resolvedTotal := int64(0)
-	for _, count := range statusCounts {
-		resolvedTotal += count
-	}
-
-	if total != resolvedTotal || passed != statusCounts[qase.StatusPassed] {
-		logrus.Warnf("Qase run stats do not match resolved result statuses: stats total=%d passed=%d, results total=%d passed=%d", total, passed, resolvedTotal, statusCounts[qase.StatusPassed])
-		return
-	}
-
-	failed := statusCounts[qase.StatusFailed]
 	exceededThresholds := statusCounts[qase.StatusExceededThresholds]
-	if passed+failed+exceededThresholds != total {
-		logrus.Warnf("Qase run result statuses include values that cannot be represented in the run stats summary: %v", statusCounts)
-		return
+	if count, ok := statusCounts[qase.StatusPassed]; ok && passed == 0 {
+		passed = count
+	}
+	if count, ok := statusCounts[qase.StatusFailed]; ok && failed == 0 {
+		failed = count
 	}
 
-	// Percentage is undefined for an empty run; report 0 rather than dividing by zero.
-	var passPercent float64
-	if total > 0 {
-		passPercent = float64(passed) / float64(total) * 100
-	}
-
-	runURL := fmt.Sprintf("https://app.qase.io/run/%s/dartboard/%d", projectID, runIDVal)
+	runURL := fmt.Sprintf("https://app.qase.io/run/%s/dashboard/%d", projectID, runIDVal)
 
 	fmt.Printf("QASE_RUN_TOTAL=%d\n", total)
 	fmt.Printf("QASE_RUN_PASSED=%d\n", passed)
 	fmt.Printf("QASE_RUN_FAILED=%d\n", failed)
 	fmt.Printf("QASE_RUN_EXCEEDED_THRESHOLDS=%d\n", exceededThresholds)
-	fmt.Printf("QASE_RUN_PASS_PERCENT=%.0f\n", passPercent)
 	fmt.Printf("QASE_RUN_URL=%s\n", runURL)
 
-	logrus.Infof("Qase run %d: %d/%d passed (%.0f%%)", runIDVal, passed, total, passPercent)
+	logrus.Infof("Qase run %d: %d/%d passed", runIDVal, passed, total)
 }

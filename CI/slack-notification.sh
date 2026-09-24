@@ -100,9 +100,8 @@ send_jenkins_e2e_notification() {
 		"${QASE_RUN_PASSED:-}" =~ ^[0-9]+$ &&
 		"${QASE_RUN_FAILED:-}" =~ ^[0-9]+$ &&
 		"${QASE_RUN_EXCEEDED_THRESHOLDS:-}" =~ ^[0-9]+$ &&
-		"${QASE_RUN_PASS_PERCENT:-}" =~ ^[0-9]+$ &&
-		"${QASE_RUN_URL:-}" =~ ^https://app\.qase\.io/run/[^[:space:]/]+/dartboard/[0-9]+$ ]]; then
-		qase_summary="${QASE_RUN_PASS_PERCENT}% Pass (${QASE_RUN_PASSED}/${QASE_RUN_TOTAL}) - ${QASE_RUN_FAILED} failed, ${QASE_RUN_EXCEEDED_THRESHOLDS} thresholds exceeded"
+		"${QASE_RUN_URL:-}" =~ ^https://app\.qase\.io/run/[^[:space:]/]+/dashboard/[0-9]+$ ]]; then
+		qase_summary="${QASE_RUN_PASSED}/${QASE_RUN_TOTAL} passed - ${QASE_RUN_FAILED} failed, ${QASE_RUN_EXCEEDED_THRESHOLDS} thresholds exceeded"
 		if [ -n "${QASE_RUN_URL}" ]; then
 			qase_summary="<${QASE_RUN_URL}|${qase_summary}>"
 		fi

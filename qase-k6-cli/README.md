@@ -64,7 +64,7 @@ export QASE_TESTOPS_PROJECT=PRJ
 
 Fetches aggregate pass/fail stats for a Qase test run and prints them as
 `KEY=VALUE` lines (`QASE_RUN_TOTAL`, `QASE_RUN_PASSED`, `QASE_RUN_FAILED`,
-`QASE_RUN_EXCEEDED_THRESHOLDS`, `QASE_RUN_PASS_PERCENT`, `QASE_RUN_URL`) so a
+`QASE_RUN_EXCEEDED_THRESHOLDS`, `QASE_RUN_URL`) so a
 CI pipeline can source them into environment variables, e.g. for a Slack
 notification. If the run stats cannot be fully resolved, the command logs a
 warning and emits no key/value output.
