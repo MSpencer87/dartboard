@@ -36,8 +36,7 @@ func getRunStats(runIDOverride string) {
 		logrus.Fatalf("Invalid runID: %v", err)
 	}
 
-	include := "stats"
-	run, err := qaseClient.GetTestRun(context.Background(), projectID, runIDVal, &include)
+	run, err := qaseClient.GetTestRun(context.Background(), projectID, runIDVal, nil)
 	if err != nil {
 		logrus.Fatalf("Failed to get test run: %v", err)
 	}
