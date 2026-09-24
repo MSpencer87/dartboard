@@ -160,23 +160,23 @@ pipeline {
       }
     }
 
-    stage('Mock Data') {
-      steps {
-        script {
-          // build mock data for testing slack notif in post
-          env.RANCHER_VERSION = 'v2.10.2'
-          env.KUBERNETES_VERSION = 'v1.31.2'
+//     stage('Mock Data') {
+//       steps {
+//         script {
+//           // build mock data for testing slack notif in post
+//           env.RANCHER_VERSION = 'v2.10.2'
+//           env.KUBERNETES_VERSION = 'v1.31.2'
 
-          sh 'mkdir -p dartboard'
-          writeFile file: 'dartboard/qase-runstats.env', text: '''QASE_RUN_TOTAL=10
-QASE_RUN_PASSED=9
-QASE_RUN_FAILED=1
-QASE_RUN_EXCEEDED_THRESHOLDS=0
-QASE_RUN_URL=https://app.qase.io/run/DEMO/dashboard/12345
-'''
-        }
-      }
-    }
+//           sh 'mkdir -p dartboard'
+//           writeFile file: 'dartboard/qase-runstats.env', text: '''QASE_RUN_TOTAL=10
+// QASE_RUN_PASSED=9
+// QASE_RUN_FAILED=1
+// QASE_RUN_EXCEEDED_THRESHOLDS=0
+// QASE_RUN_URL=https://app.qase.io/run/DEMO/dashboard/12345
+// '''
+//         }
+//       }
+//     }
   }
 
   post {
