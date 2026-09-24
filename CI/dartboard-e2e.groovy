@@ -7,6 +7,8 @@
 def deploymentId
 def deploymentCreated = false
 def qaseK6Build
+// Temporary hardcode for STABILITY_DELAY
+def stabilityDelay = 0
 
 def downstreamResult(buildResult, jobName) {
   if (buildResult?.number) {
@@ -108,6 +110,19 @@ pipeline {
             throw t
           }
         }
+      }
+    }
+
+    stage('Stabilize') {
+      when {
+        // expression { params.STABILITY_DELAY?.toString()?.isInteger() && params.STABILITY_DELAY.toInteger() > 0 }
+        expression { stabilityDelay > 0 }
+      }
+      steps {
+        //echo "Pausing for ${params.STABILITY_DELAY} minutes before starting tests..."
+        //sleep time: params.STABILITY_DELAY.toInteger(), unit: 'MINUTES'
+        echo "Pausing for ${stabilityDelay} minutes before starting tests..."
+        sleep time: stabilityDelay, unit: 'MINUTES'
       }
     }
 
