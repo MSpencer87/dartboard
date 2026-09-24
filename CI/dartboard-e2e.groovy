@@ -192,7 +192,10 @@ pipeline {
             echo 'Qase run stats artifact was unavailable: dartboard-qase-k6-runner did not start.'
           }
 
-          property.useWithCredentials(['DARTBOARD_SLACK_BOT_TOKEN', 'DARTBOARD_SLACK_CHANNEL']) {
+          withCredentials([
+            string(credentialsId: 'DARTBOARD_SLACK_BOT_TOKEN', variable: 'DARTBOARD_SLACK_BOT_TOKEN'),
+            string(credentialsId: 'DARTBOARD_SLACK_CHANNEL', variable: 'DARTBOARD_SLACK_CHANNEL')
+          ]) {
             def notificationStatus = sh(
               script: """
                 # Validate expected format and key constraints before sourcing
