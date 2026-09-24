@@ -211,12 +211,12 @@ QASE_RUN_URL=https://app.qase.io/run/DEMO/dashboard/12345
         // Fetch and validate test run statistics
         if (params.SLACK_NOTIFICATION) {
           if (qaseK6Build?.number) {
-            sh 'rm -rf dartboard/qase-runstats.env'
             try {
               copyArtifacts(
                 filter: 'dartboard/qase-runstats.env',
                 projectName: 'dartboard-qase-k6-runner',
-                selector: specific("${qaseK6Build.number}")
+                selector: specific("${qaseK6Build.number}"),
+                optional: true
               )
             } catch (e) {
               echo "Qase run stats artifact was unavailable: ${e.message}"

@@ -42,10 +42,12 @@ func getRunStats(runIDOverride string) {
 		logrus.Fatalf("Failed to get test run: %v", err)
 	}
 
-	stats := run.GetStats()
-	total := int64(stats.GetTotal())
-	passed := int64(stats.GetPassed())
-	failed := int64(stats.GetFailed())
+	var total, passed, failed int64
+	if stats := run.GetStats(); stats != nil {
+		total = int64(stats.GetTotal())
+		passed = int64(stats.GetPassed())
+		failed = int64(stats.GetFailed())
+	}
 
 	statusCounts, err := qaseClient.GetRunResultStatusCounts(context.Background(), projectID, runIDVal)
 	if err != nil {
