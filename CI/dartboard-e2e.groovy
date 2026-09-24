@@ -203,7 +203,7 @@ pipeline {
                     grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' dartboard/qase-runstats.env && \\
                     grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' dartboard/qase-runstats.env; then
+                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dashboard/[0-9]+\$' dartboard/qase-runstats.env; then
                     set -a
                     . ./dartboard/qase-runstats.env
                     set +a

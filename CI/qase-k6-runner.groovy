@@ -366,7 +366,7 @@ ${safeK6Env}
                     grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' qase-runstats.env
                     grep -Eq '^QASE_RUN_PASS_PERCENT=[0-9]+\$' qase-runstats.env
-                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dartboard/[0-9]+\$' qase-runstats.env
+                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dashboard/[0-9]+\$' qase-runstats.env
                   """
                 }
               }
