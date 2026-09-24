@@ -30,13 +30,20 @@ EOF
 	# Bounded: this runs in the post block, so a stalled Slack call would hold
 	# the build open against the outer timeout rather than the few seconds a
 	# notification is worth.
-	if ! curl --fail --silent --show-error -X POST \
+	local response
+	if ! response=$(curl --fail --silent --show-error -X POST \
 		--connect-timeout 10 --max-time 30 --retry 2 --retry-delay 3 \
 		-H "Content-type: application/json; charset=utf-8" \
 		-H "Authorization: Bearer $bot_token" \
 		--data "$payload" \
-		"https://slack.com/api/chat.postMessage"; then
-		echo "Failed to send Slack notification"
+		"https://slack.com/api/chat.postMessage"); then
+		echo "Failed to send Slack notification (HTTP/network error)"
+		return 1
+	fi
+
+	# Slack returns HTTP 200 even for errors (e.g. invalid_auth, channel_not_found)
+	if [[ "$response" != *'"ok":true'* ]]; then
+		echo "Failed to send Slack notification (API error): $response"
 		return 1
 	fi
 
@@ -121,4 +128,3 @@ send_jenkins_e2e_notification() {
 
 # Execute main function with build status
 send_jenkins_e2e_notification "$1"
-
