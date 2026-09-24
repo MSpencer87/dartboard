@@ -43,7 +43,7 @@ func getRunStats(runIDOverride string) {
 	}
 
 	var total, passed, failed int64
-	if stats := run.GetStats(); stats != nil {
+	if stats := run.Stats; stats != nil {
 		total = int64(stats.GetTotal())
 		passed = int64(stats.GetPassed())
 		failed = int64(stats.GetFailed())
