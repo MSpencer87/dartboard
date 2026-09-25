@@ -102,13 +102,7 @@ send_jenkins_e2e_notification() {
 
 	local rancher_ver="${RANCHER_VERSION:-}"
 	local k8s_ver="${KUBERNETES_VERSION:-}"
-	if [ -n "$rancher_ver" ] && [ -n "$k8s_ver" ]; then
-		message+="Rancher: $rancher_ver (on $k8s_ver)\n"
-	elif [ -n "$rancher_ver" ]; then
-		message+="Rancher: $rancher_ver\n"
-	elif [ -n "$k8s_ver" ]; then
-		message+="Kubernetes: $k8s_ver\n"
-	fi
+	message+="Rancher: $rancher_ver (on $k8s_ver)\n"
 
 	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
 	local run_id="${QASE_RUN_ID:-${QASE_TESTOPS_RUN_ID:-}}"
