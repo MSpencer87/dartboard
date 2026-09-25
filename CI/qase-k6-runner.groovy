@@ -151,16 +151,16 @@ pipeline {
                 echo "Warning: Could not find 'Rancher UI' in ${env.ACCESS_LOG}"
               }
 
-              // def rMatch = accessLogContent =~ /(?m)^\s*Rancher Version:\s*(\S+)/
-              // if (rMatch.find()) {
-              //   rancherVersion = rMatch.group(1).trim()
-              //   echo "Found Rancher Version: ${rancherVersion}"
-              // }
-              // def kMatch = accessLogContent =~ /(?m)^\s*Kubernetes Version:\s*(\S+)/
-              // if (kMatch.find()) {
-              //   kubernetesVersion = kMatch.group(1).trim()
-              //   echo "Found Kubernetes Version: ${kubernetesVersion}"
-              // }
+              def rMatch = accessLogContent =~ /(?m)^\s*Rancher Version:\s*(\S+)/
+              if (rMatch.find()) {
+                rancherVersion = rMatch.group(1).trim()
+                echo "Found Rancher Version: ${rancherVersion}"
+              }
+              def kMatch = accessLogContent =~ /(?m)^\s*Kubernetes Version:\s*(\S+)/
+              if (kMatch.find()) {
+                kubernetesVersion = kMatch.group(1).trim()
+                echo "Found Kubernetes Version: ${kubernetesVersion}"
+              }
             }
 
             // Find the upstream.yaml file within the downloaded artifacts and move it to the current directory.
