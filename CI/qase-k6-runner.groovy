@@ -361,6 +361,8 @@ ${safeK6Env}
                   """
                 }
               }
+              echo "Qase run stats (${env.QASE_RUNSTATS_FILE}):"
+              sh "cat ${env.QASE_RUNSTATS_FILE}"
             }
           } else {
             echo "Skipping Qase run stats: QASE_TESTOPS_PROJECT or QASE_TESTOPS_RUN_ID is invalid."
