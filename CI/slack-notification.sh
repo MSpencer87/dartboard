@@ -66,7 +66,6 @@ append_field() {
 # Main execution
 send_jenkins_e2e_notification() {
 	local build_status="$1"
-	local job_name="${JOB_NAME:-Unknown Job}"
 	local build_number="${BUILD_NUMBER:-Unknown}"
 	local build_url="${BUILD_URL:-}"
 
@@ -75,45 +74,68 @@ send_jenkins_e2e_notification() {
 	local slack_channel="${DARTBOARD_SLACK_CHANNEL:-}"
 
 	local emoji="✅"
-	local status_text="PASSED"
+	local status_text="SUCCESS"
 
-	if [ "$build_status" = "FAILURE" ]; then
+	if [ "$build_status" = "FAILURE" ] || [ "$build_status" = "FAILED" ]; then
 		emoji="❌"
 		status_text="FAILED"
 	elif [ "$build_status" = "UNSTABLE" ]; then
 		emoji="⚠️"
 		status_text="UNSTABLE"
+	elif [ "$build_status" = "ABORTED" ]; then
+		emoji="❌"
+		status_text="ABORTED"
+	elif [ "$build_status" = "SUCCESS" ] || [ "$build_status" = "PASSED" ]; then
+		emoji="✅"
+		status_text="SUCCESS"
 	fi
 
-	local message="*k6 Tests $status_text* $emoji\n"
-	message+="• *Job:* $job_name\n"
-
-	# Add build number with link
-	if [ -n "$build_url" ] && [ "$build_number" != "Unknown" ]; then
-		message+="• *Build:* <$build_url|#$build_number>\n"
+	local build_link="link"
+	if [ -n "$build_url" ]; then
+		build_link="<$build_url|link>"
 	elif [ "$build_number" != "Unknown" ]; then
-		message+="• *Build:* #$build_number\n"
+		build_link="#$build_number"
 	fi
+
+	local message="Build - $build_link - $status_text $emoji\n"
 
 	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
-	local qase_summary=""
+	local run_id="${QASE_RUN_ID:-${QASE_TESTOPS_RUN_ID:-}}"
+	if [ -z "$run_id" ] && [ -n "${QASE_RUN_URL:-}" ]; then
+		run_id="${QASE_RUN_URL##*/}"
+	fi
 
 	if [[ "${QASE_RUN_TOTAL:-}" =~ ^[0-9]+$ &&
 		"${QASE_RUN_PASSED:-}" =~ ^[0-9]+$ &&
 		"${QASE_RUN_FAILED:-}" =~ ^[0-9]+$ &&
-		"${QASE_RUN_EXCEEDED_THRESHOLDS:-}" =~ ^[0-9]+$ &&
-		"${QASE_RUN_URL:-}" =~ ^https://app\.qase\.io/run/[^[:space:]/]+/dashboard/[0-9]+$ ]]; then
-		qase_summary="${QASE_RUN_PASSED}/${QASE_RUN_TOTAL} passed - ${QASE_RUN_FAILED} failed, ${QASE_RUN_EXCEEDED_THRESHOLDS} thresholds exceeded"
-		if [ -n "${QASE_RUN_URL}" ]; then
-			qase_summary="<${QASE_RUN_URL}|${qase_summary}>"
+		"${QASE_RUN_EXCEEDED_THRESHOLDS:-}" =~ ^[0-9]+$ ]]; then
+		message+=$(append_field "Passed" "${QASE_RUN_PASSED}/${QASE_RUN_TOTAL}")
+		message+=$(append_field "Threshold Exceeded" "${QASE_RUN_EXCEEDED_THRESHOLDS}")
+		message+=$(append_field "Failed" "${QASE_RUN_FAILED}")
+
+		local skipped="${QASE_RUN_SKIPPED:-}"
+		if [ -z "$skipped" ]; then
+			local executed=$((QASE_RUN_PASSED + QASE_RUN_FAILED + QASE_RUN_EXCEEDED_THRESHOLDS))
+			if [ "$executed" -le "$QASE_RUN_TOTAL" ]; then
+				skipped=$((QASE_RUN_TOTAL - executed))
+			else
+				skipped="0"
+			fi
 		fi
+		message+=$(append_field "Skipped" "$skipped")
 	else
-		echo "Skipping Qase run summary: required QASE_RUN_* values are unavailable or invalid."
+		echo "Skipping Qase run stats: required QASE_RUN_* values are unavailable or invalid."
 	fi
 
-	message+=$(append_field "Qase Run" "$qase_summary")
-	message+=$(append_field "Rancher Version" "${RANCHER_VERSION:-}")
-	message+=$(append_field "K8s Version" "${KUBERNETES_VERSION:-}")
+	local qase_test_run=""
+	if [ -n "$run_id" ] && [ -n "${QASE_RUN_URL:-}" ]; then
+		qase_test_run="${run_id} - <${QASE_RUN_URL}|link>"
+	elif [ -n "$run_id" ]; then
+		qase_test_run="${run_id}"
+	elif [ -n "${QASE_RUN_URL:-}" ]; then
+		qase_test_run="<${QASE_RUN_URL}|link>"
+	fi
+	message+=$(append_field "Qase Test Run" "$qase_test_run")
 
 	message+="• *Timestamp:* $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 

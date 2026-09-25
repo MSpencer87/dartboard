@@ -10,15 +10,17 @@ def qaseK6Build
 // Temporary hardcode for STABILITY_DELAY
 def stabilityDelay = 1
 
-def downstreamResult(buildResult, jobName) {
+def downstreamResult(buildResult, jobName, buildResultOnUnstable = 'SUCCESS') {
   if (buildResult?.number) {
-    echo "${jobName} build #${buildResult.number} completed: ${buildResult.result ?: 'UNKNOWN'}"
+    echo "${jobName} build #${buildResult.number} completed: ${buildResult.result ?: 'UNKNOWN'} (${buildResult.absoluteUrl ?: ''})"
   }
   if (buildResult?.result == 'SUCCESS') {
     return
   }
   if (buildResult?.result == 'UNSTABLE') {
-    currentBuild.result = 'UNSTABLE'
+    catchError(buildResult: buildResultOnUnstable, stageResult: 'UNSTABLE') {
+      error("${jobName} build #${buildResult?.number} completed with status: UNSTABLE")
+    }
     return
   }
   error("${jobName} build #${buildResult?.number} failed with result: ${buildResult?.result ?: 'UNKNOWN'}")
@@ -151,7 +153,7 @@ pipeline {
               propagate: false,
               wait: true
             )
-            downstreamResult(qaseK6Build, 'Run Qase Test Suite')
+            downstreamResult(qaseK6Build, 'Run Qase Test Suite', 'UNSTABLE')
           } catch (Throwable t) {
             echo "Qase Test Suite stage failed with error: ${t.class.name}: ${t.message}"
             throw t
