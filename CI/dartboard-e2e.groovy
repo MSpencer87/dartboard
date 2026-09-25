@@ -4,6 +4,7 @@
 // is delegated to dartboard-qase-k6-runner so their implementations remain the source of truth.
 @Library('qa-jenkins-library') _
 
+def deployBuild
 def deploymentId
 def deploymentCreated = false
 def qaseK6Build
@@ -48,7 +49,19 @@ pipeline {
     stage('Deploy') {
       steps {
         script {
-          def deployBuild = build(
+          if (!params.DEPLOY) {
+            echo 'DEPLOY parameter is false; skipping Deploy stage.'
+            if (params.DEPLOYMENT_ID) {
+              deploymentId = params.DEPLOYMENT_ID
+              env.DEPLOYMENT_ID = deploymentId
+              currentBuild.description = "Deployment ${deploymentId}"
+              echo "Targeting existing deployment ID: ${deploymentId}"
+            }
+            return
+          }
+
+          echo 'Starting infrastructure deployment...'
+          deployBuild = build(
             job: 'dartboard-choice',
             parameters: choiceParameters('deploy', ''),
             propagate: false,
@@ -103,9 +116,13 @@ pipeline {
     stage('Load') {
       steps {
         script {
+          if (!params.LOAD) {
+            echo 'LOAD parameter is false; skipping Load stage.'
+            return
+          }
+
           try {
-            // Retrieve deployment ID from environment or fallback script binding
-            def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
+            def targetDeploymentId = params.DEPLOYMENT_ID ?: env.DEPLOYMENT_ID ?: deploymentId
             if (!targetDeploymentId) {
               error('Cannot execute Load stage: deploymentId is empty.')
             }
@@ -142,8 +159,7 @@ pipeline {
       steps {
         script {
           try {
-            // Forward deployment and target configuration to the k6 test runner
-            def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
+            def targetDeploymentId = params.DEPLOYMENT_ID ?: env.DEPLOYMENT_ID ?: deploymentId
             if (!targetDeploymentId) {
               error('Cannot execute Qase Test Suite: deploymentId is empty.')
             }
@@ -176,12 +192,30 @@ pipeline {
   post {
     always {
       script {
-        if (!deploymentCreated) {
+        def targetDeploymentId = params.DEPLOYMENT_ID ?: env.DEPLOYMENT_ID ?: deploymentId
+        if (!deploymentCreated && !targetDeploymentId) {
           echo 'Deployment was not created; skipping cleanup.'
         } else if (!params.DESTROY) {
-          echo "DESTROY is disabled; leaving deployment '${deploymentId}' running."
+          echo "DESTROY is disabled; leaving deployment '${targetDeploymentId}' running."
+          if (deployBuild?.number) {
+            copyArtifacts(
+              filter: 'dartboard/access.log',
+              projectName: 'dartboard-choice',
+              selector: specific("${deployBuild.number}"),
+              optional: true
+            )
+          }
+          if (fileExists('dartboard/access.log')) {
+            //output access.log contents for the persisting environment
+            def accessLog = readFile('dartboard/access.log')
+            echo "---- Access Details ----\n${accessLog}"
+
+            def match = accessLog =~ /Rancher UI:\s*(\S+)/
+            if (match) {
+              env.RANCHER_URL = match[0][1]
+            }
+          }
         } else {
-          def targetDeploymentId = env.DEPLOYMENT_ID ?: deploymentId
           echo "Destroying deployment '${targetDeploymentId}'..."
           try {
             def destroyBuild = build(

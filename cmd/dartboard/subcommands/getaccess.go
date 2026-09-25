@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rancher/dartboard/internal/dart"
 	"github.com/rancher/dartboard/internal/tofu"
 	cli "github.com/urfave/cli/v2"
 )
@@ -56,7 +57,17 @@ func GetAccess(cli *cli.Context) error {
 	}
 
 	fmt.Println("\n\n\n*** ACCESS DETAILS")
-	fmt.Println()
+
+	if r.ChartVariables.RancherVersion != "" {
+		fmt.Printf("    Rancher Version: %s\n", r.ChartVariables.RancherVersion)
+	}
+
+	if distro := getUpstreamDistroVersion(r); distro != "" {
+		fmt.Printf("    Kubernetes Version: %s\n", distro)
+	}
+
+	servers, agents := countUpstreamNodes(r)
+	fmt.Printf("    Nodes: %v server, %v agent\n", servers, agents)
 
 	printAccessDetails(r, "UPSTREAM", upstream, rancherURL)
 

@@ -9,6 +9,8 @@ if (params.JENKINS_AGENT_LABEL) {
 
 def kubeconfigContainerPath
 def baseURL
+def rancherVersion
+def kubernetesVersion
 def sanitizeCharacterRegex = "[^a-zA-Z0-9'_-]"
 def sanitizeK6EnvRegex = "[^a-zA-Z0-9_=,;&*-.\\n\\r]"
 def sanitizeK6ScriptPathRegex = "[^a-zA-Z0-9_./-]"
@@ -148,6 +150,17 @@ pipeline {
               } else {
                 echo "Warning: Could not find 'Rancher UI' in ${env.ACCESS_LOG}"
               }
+
+              // def rMatch = accessLogContent =~ /(?m)^\s*Rancher Version:\s*(\S+)/
+              // if (rMatch.find()) {
+              //   rancherVersion = rMatch.group(1).trim()
+              //   echo "Found Rancher Version: ${rancherVersion}"
+              // }
+              // def kMatch = accessLogContent =~ /(?m)^\s*Kubernetes Version:\s*(\S+)/
+              // if (kMatch.find()) {
+              //   kubernetesVersion = kMatch.group(1).trim()
+              //   echo "Found Kubernetes Version: ${kubernetesVersion}"
+              // }
             }
 
             // Find the upstream.yaml file within the downloaded artifacts and move it to the current directory.
@@ -372,7 +385,13 @@ ${safeK6Env}
           echo "Failed to generate Qase run stats: ${e.message}"
         }
 
-        writeFile file: "dartboard/${env.QASE_RUNSTATS_FILE}", text: readFile("dartboard/${env.QASE_RUNSTATS_FILE}")
+        def runstatsContent = fileExists("dartboard/${env.QASE_RUNSTATS_FILE}") ? readFile("dartboard/${env.QASE_RUNSTATS_FILE}") : ""
+        def extraStats = [
+          baseURL ? "RANCHER_URL='${baseURL}'" : null,
+          rancherVersion ? "RANCHER_VERSION='${rancherVersion}'" : null,
+          kubernetesVersion ? "KUBERNETES_VERSION='${kubernetesVersion}'" : null
+        ].findAll().join('\n')
+        writeFile file: "dartboard/${env.QASE_RUNSTATS_FILE}", text: "${runstatsContent}\n${extraStats}".trim() + "\n"
 
         echo "Archiving k6 test results..."
         archiveArtifacts artifacts: """
