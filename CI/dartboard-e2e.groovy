@@ -70,10 +70,14 @@ pipeline {
             error('Deploy artifact rendered-dart.yaml was not found in the workspace.')
           }
 
-          // Extract project_name directly
-          def dartContent = readFile(artifactPath)
-          def projectLine = dartContent.readLines().find { it.trim().startsWith('project_name:') }
-          deploymentId = projectLine ? projectLine.split(':', 2)[1].split('#')[0].replaceAll(/["'\s]/, '') : ''
+          // Extract deployment and cluster version configuration
+          def dartLines = readFile(artifactPath).readLines()
+          def extractYamlValue = { String key ->
+            def line = dartLines.find { it.trim().startsWith("${key}:") }
+            line ? line.split(':', 2)[1].split('#')[0].replaceAll(/["'\s]/, '') : ''
+          }
+
+          deploymentId = extractYamlValue('project_name')
 
           // Store and display initial project_name as deploymentId in environment
           env.DEPLOYMENT_ID = deploymentId
@@ -81,6 +85,12 @@ pipeline {
 
           if (!deploymentId || deploymentId.startsWith('$')) {
             error("Deploy artifact did not contain a resolved project_name as deploymentId: ${deploymentId}")
+          }
+
+          env.RANCHER_VERSION = extractYamlValue('rancher_version') ?: extractYamlValue('rancher_image_tag')
+          env.KUBERNETES_VERSION = extractYamlValue('distro_version') ?: extractYamlValue('kubernetes_version')
+          if (env.RANCHER_VERSION || env.KUBERNETES_VERSION) {
+            echo "Resolved versions - Rancher: ${env.RANCHER_VERSION ?: 'Unknown'}, Kubernetes: ${env.KUBERNETES_VERSION ?: 'Unknown'}"
           }
 
           // TODO: Improve description

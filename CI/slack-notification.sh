@@ -91,13 +91,24 @@ send_jenkins_e2e_notification() {
 	fi
 
 	local build_link="link"
-	if [ -n "$build_url" ]; then
-		build_link="<$build_url|link>"
-	elif [ "$build_number" != "Unknown" ]; then
+	if [ "$build_number" != "Unknown" ]; then
 		build_link="#$build_number"
+	fi
+	if [ -n "$build_url" ]; then
+		build_link="<$build_url|$build_link>"
 	fi
 
 	local message="Build - $build_link - $status_text $emoji\n"
+
+	local rancher_ver="${RANCHER_VERSION:-}"
+	local k8s_ver="${KUBERNETES_VERSION:-}"
+	if [ -n "$rancher_ver" ] && [ -n "$k8s_ver" ]; then
+		message+="Rancher: $rancher_ver (on $k8s_ver)\n"
+	elif [ -n "$rancher_ver" ]; then
+		message+="Rancher: $rancher_ver\n"
+	elif [ -n "$k8s_ver" ]; then
+		message+="Kubernetes: $k8s_ver\n"
+	fi
 
 	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
 	local run_id="${QASE_RUN_ID:-${QASE_TESTOPS_RUN_ID:-}}"
@@ -129,7 +140,7 @@ send_jenkins_e2e_notification() {
 
 	local qase_test_run=""
 	if [ -n "$run_id" ] && [ -n "${QASE_RUN_URL:-}" ]; then
-		qase_test_run="${run_id} - <${QASE_RUN_URL}|link>"
+		qase_test_run="<${QASE_RUN_URL}|${run_id}>"
 	elif [ -n "$run_id" ]; then
 		qase_test_run="${run_id}"
 	elif [ -n "${QASE_RUN_URL:-}" ]; then
