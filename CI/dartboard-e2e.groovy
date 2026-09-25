@@ -213,22 +213,10 @@ pipeline {
           ]) {
             def notificationStatus = sh(
               script: """
-                # Validate expected format and key constraints before sourcing
-                if [ -f dartboard/qase-runstats.env ]; then
-                  if [ "\$(wc -l < dartboard/qase-runstats.env)" -eq 5 ] && \\
-                    grep -Eq '^QASE_RUN_TOTAL=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_PASSED=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_FAILED=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_EXCEEDED_THRESHOLDS=[0-9]+\$' dartboard/qase-runstats.env && \\
-                    grep -Eq '^QASE_RUN_URL=https://app\\.qase\\.io/run/[^[:space:]/]+/dashboard/[0-9]+\$' dartboard/qase-runstats.env; then
-                    set -a
-                    . ./dartboard/qase-runstats.env
-                    set +a
-                  else
-                    echo 'Skipping Qase run stats artifact: required values are invalid.'
-                  fi
-                else
-                  echo 'Skipping Qase run stats artifact: artifact was not found.'
+                if [ -s dartboard/qase-runstats.env ]; then
+                  set -a
+                  . ./dartboard/qase-runstats.env
+                  set +a
                 fi
                 bash CI/slack-notification.sh "${currentBuild.currentResult}"
               """,

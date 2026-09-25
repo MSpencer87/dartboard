@@ -372,6 +372,8 @@ ${safeK6Env}
           echo "Failed to generate Qase run stats: ${e.message}"
         }
 
+        writeFile file: "dartboard/${env.QASE_RUNSTATS_FILE}", text: readFile("dartboard/${env.QASE_RUNSTATS_FILE}")
+
         echo "Archiving k6 test results..."
         archiveArtifacts artifacts: """
           dartboard/*.json,
