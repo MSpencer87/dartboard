@@ -357,6 +357,7 @@ ${safeK6Env}
                       -e QASE_TESTOPS_API_TOKEN \
                       -e QASE_TESTOPS_PROJECT="\${QASE_PROJECT}" \
                       -e QASE_TESTOPS_RUN_ID="\${QASE_RUN_ID}" \
+                      -e QASE_DEBUG=true \\
                       ${env.IMAGE_NAME}:latest qase-k6-cli runstats -runID "\${QASE_RUN_ID}" > ${env.QASE_RUNSTATS_FILE}
                   """
                 }
