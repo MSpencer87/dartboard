@@ -11,6 +11,7 @@ def kubeconfigContainerPath
 def baseURL
 def rancherVersion
 def kubernetesVersion
+def accessLogLink
 def sanitizeCharacterRegex = "[^a-zA-Z0-9'_-]"
 def sanitizeK6EnvRegex = "[^a-zA-Z0-9_=,;&*-.\\n\\r]"
 def sanitizeK6ScriptPathRegex = "[^a-zA-Z0-9_./-]"
@@ -140,6 +141,8 @@ pipeline {
             // Extract FQDN and set environment variables for the next stage
             def accessLogPath = "./${env.ARTIFACTS_DIR}/${env.ACCESS_LOG}"
             if (fileExists(accessLogPath)) {
+              accessLogLink = "${env.BUILD_URL}artifact/dartboard/${env.ACCESS_LOG}"
+              echo "Found access log, artifact link: ${accessLogLink}"
               def accessLogContent = readFile(accessLogPath)
               // See https://docs.groovy-lang.org/next/html/groovy-jdk/java/util/regex/Matcher.html
               def matcher = accessLogContent =~ /(?m)^\s*Rancher UI:\s*(https?:\/\/[^ :]+)/
@@ -395,6 +398,9 @@ ${safeK6Env}
         }
         if (kubernetesVersion) {
           envData.add("KUBERNETES_VERSION='${kubernetesVersion}'")
+        }
+        if (accessLogLink) {
+          envData.add("ACCESS_LOG_URL='${accessLogLink}'")
         }
         def extraStats = envData.join('\n')
         writeFile file: "dartboard/${env.QASE_RUNSTATS_FILE}", text: "${runstatsContent}\n${extraStats}".trim() + "\n"

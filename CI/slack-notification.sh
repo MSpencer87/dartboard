@@ -111,8 +111,16 @@ send_jenkins_e2e_notification() {
 	if [ -n "$rancher_url" ]; then
 		rancher_link="<$rancher_url|$rancher_link>"
 	fi
+
+	#format access log link here
+	local access_log_url="${ACCESS_LOG_URL:-}"
+	local access_log_link="link"
+	if [ -n "$access_log_url" ]; then
+		access_log_link="<$access_log_url|Access log>"
+	fi
+
 	local k8s_ver="${KUBERNETES_VERSION:-}"
-	message+="Rancher: $rancher_link (on $k8s_ver)\n"
+	message+="Rancher: $rancher_link (on $k8s_ver) - $access_log_link \n"
 
 	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
 	local run_id="${QASE_RUN_ID:-${QASE_TESTOPS_RUN_ID:-}}"
