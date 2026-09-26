@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rancher/dartboard/internal/dart"
 	"github.com/rancher/dartboard/internal/tofu"
 	cli "github.com/urfave/cli/v2"
 )
