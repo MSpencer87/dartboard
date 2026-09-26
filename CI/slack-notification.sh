@@ -68,6 +68,7 @@ send_jenkins_e2e_notification() {
 	local build_status="$1"
 	local build_number="${BUILD_NUMBER:-Unknown}"
 	local build_url="${BUILD_URL:-}"
+	local rancher_url="${RANCHER_URL:-}"
 
 	# Get Slack bot token and channel from Secrets Manager
 	local slack_bot_token="${DARTBOARD_SLACK_BOT_TOKEN:-}"
@@ -90,6 +91,7 @@ send_jenkins_e2e_notification() {
 		status_text="SUCCESS"
 	fi
 
+	# Format the build number as a link
 	local build_link="link"
 	if [ "$build_number" != "Unknown" ]; then
 		build_link="#$build_number"
@@ -100,9 +102,17 @@ send_jenkins_e2e_notification() {
 
 	local message="Build - $build_link - $status_text $emoji\n"
 
+	# Format the Rancher version as a link
 	local rancher_ver="${RANCHER_VERSION:-}"
+	local rancher_link="link"
+	if [ -n "$rancher_ver" ]; then
+		rancher_link="$rancher_ver"
+	fi
+	if [ -n "$rancher_url" ]; then
+		rancher_link="<$rancher_url|$rancher_link>"
+	fi
 	local k8s_ver="${KUBERNETES_VERSION:-}"
-	message+="Rancher: $rancher_ver (on $k8s_ver)\n"
+	message+="Rancher: $rancher_link (on $k8s_ver)\n"
 
 	# Qase test run summary, published by the qase-k6-cli 'runstats' subcommand.
 	local run_id="${QASE_RUN_ID:-${QASE_TESTOPS_RUN_ID:-}}"
