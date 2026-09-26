@@ -8,8 +8,6 @@ def deployBuild
 def deploymentId
 def deploymentCreated = false
 def qaseK6Build
-// Temporary hardcode for STABILITY_DELAY
-def stabilityDelay = 1
 
 def downstreamResult(buildResult, jobName, buildResultOnUnstable = 'SUCCESS') {
   if (buildResult?.number) {
@@ -106,8 +104,7 @@ pipeline {
             echo "Resolved versions - Rancher: ${env.RANCHER_VERSION ?: 'Unknown'}, Kubernetes: ${env.KUBERNETES_VERSION ?: 'Unknown'}"
           }
 
-          // TODO: Improve description
-          currentBuild.description = "Deployment ${deploymentId}"
+          currentBuild.description = "Rancher ${env.RANCHER_VERSION}"
           deploymentCreated = true
         }
       }
@@ -144,14 +141,11 @@ pipeline {
 
     stage('Stabilize') {
       when {
-        // expression { params.STABILITY_DELAY?.toString()?.isInteger() && params.STABILITY_DELAY.toInteger() > 0 }
-        expression { stabilityDelay > 0 }
+        expression { params.STABILITY_DELAY?.toString()?.isInteger() && params.STABILITY_DELAY.toInteger() > 0 }
       }
       steps {
-        //echo "Pausing for ${params.STABILITY_DELAY} minutes before starting tests..."
-        //sleep time: params.STABILITY_DELAY.toInteger(), unit: 'MINUTES'
-        echo "Pausing for ${stabilityDelay} minutes before starting tests..."
-        sleep time: stabilityDelay, unit: 'MINUTES'
+        echo "Pausing for ${params.STABILITY_DELAY} minutes before starting tests..."
+        sleep time: params.STABILITY_DELAY.toInteger(), unit: 'MINUTES'
       }
     }
 
