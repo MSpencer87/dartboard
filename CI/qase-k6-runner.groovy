@@ -386,11 +386,17 @@ ${safeK6Env}
         }
 
         def runstatsContent = fileExists("dartboard/${env.QASE_RUNSTATS_FILE}") ? readFile("dartboard/${env.QASE_RUNSTATS_FILE}") : ""
-        def extraStats = [
-          baseURL ? "RANCHER_URL='${baseURL}'" : null,
-          rancherVersion ? "RANCHER_VERSION='${rancherVersion}'" : null,
-          kubernetesVersion ? "KUBERNETES_VERSION='${kubernetesVersion}'" : null
-        ].findAll().join('\n')
+        def envData = []
+        if (baseURL) {
+          envData.add("RANCHER_URL='${baseURL}'")
+        }
+        if (rancherVersion) {
+          envData.add("RANCHER_VERSION='${rancherVersion}'")
+        }
+        if (kubernetesVersion) {
+          envData.add("KUBERNETES_VERSION='${kubernetesVersion}'")
+        }
+        def extraStats = envData.join('\n')
         writeFile file: "dartboard/${env.QASE_RUNSTATS_FILE}", text: "${runstatsContent}\n${extraStats}".trim() + "\n"
 
         echo "Archiving k6 test results..."
